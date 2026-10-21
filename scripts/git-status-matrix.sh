@@ -21,7 +21,8 @@ for dir in "$@"; do
     printf '%-24s │ not a git repository\n' "$name"; all_ok=1; continue
   fi
   has_origin=0; git -C "$dir" remote get-url origin >/dev/null 2>&1 && has_origin=1
-  [ "$has_origin" = 1 ] && { git -C "$dir" fetch --prune -q origin 2>/dev/null || true; }
+  fetched=0
+  [ "$has_origin" = 1 ] && git -C "$dir" fetch --prune -q origin 2>/dev/null && fetched=1
 
   nl="$(git -C "$dir" for-each-ref refs/heads | wc -l | tr -d ' ')"
   nr="$(git -C "$dir" for-each-ref --format='%(refname)' refs/remotes | grep -vc '/HEAD$' | tr -d ' ')"
@@ -41,7 +42,9 @@ for dir in "$@"; do
     fi
   fi
 
-  if [ "$has_origin" = 1 ]; then
+  if [ "$has_origin" = 1 ] && [ "$fetched" = 0 ]; then
+    ab="fetch fail"   # remote refs may be stale, so don't compare against them
+  elif [ "$has_origin" = 1 ]; then
     ab="$(git -C "$dir" rev-list --left-right --count main...origin/main 2>/dev/null | awk '{print "+"$1"/-"$2}')"
     ab="${ab:-n/a}"
   else
@@ -50,7 +53,7 @@ for dir in "$@"; do
 
   tl=$((tl + nl)); tw=$((tw + wt)); ts=$((ts + st)); td=$((td + dirty))
   [ "$nr" != "-" ] && tr=$((tr + nr))
-  remote_ok=1; [ "$has_origin" = 0 ] || { [ "$nr" = 1 ] && [ "$ab" = "+0/-0" ] && { [ "$np" = 0 ] || [ "$np" = "n/a" ]; }; } || remote_ok=0
+  remote_ok=0; [ "$has_origin" = 1 ] && [ "$nr" = 1 ] && [ "$ab" = "+0/-0" ] && { [ "$np" = 0 ] || [ "$np" = "n/a" ]; } && remote_ok=1
   if [ "$nl" = 1 ] && [ "$wt" = 1 ] && [ "$st" = 0 ] && [ "$dirty" = 0 ] && [ "$remote_ok" = 1 ]; then ok=✅; else ok=❌; all_ok=1; fi
   printf "$fmt" "$name" "$nl" "$nr" "$np" "$wt" "$st" "$dirty" "$ab" "$ok"
 
@@ -80,4 +83,4 @@ fi
 [ "$has_gh" = 0 ] && echo "(PRs n/a: gh CLI missing or not authenticated)"
 printf '%s' "$details" | clean
 echo
-[ "$all_ok" -eq 0 ] && echo "main-only, clean and level with origin ✅" || echo "❌ = extra branches, PRs, worktrees, stashes, dirty files or main drift (details above)"
+[ "$all_ok" -eq 0 ] && echo "main-only, clean and level with origin ✅" || echo "❌ = extra branches, PRs, worktrees, stashes, dirty files, main drift, failed fetch or no remote (details above)"
