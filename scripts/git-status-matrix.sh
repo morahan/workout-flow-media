@@ -54,11 +54,13 @@ for dir in "$@"; do
   tl=$((tl + nl)); tw=$((tw + wt)); ts=$((ts + st)); td=$((td + dirty))
   [ "$nr" != "-" ] && tr=$((tr + nr))
   remote_ok=0; [ "$has_origin" = 1 ] && [ "$nr" = 1 ] && [ "$ab" = "+0/-0" ] && { [ "$np" = 0 ] || [ "$np" = "n/a" ]; } && remote_ok=1
-  if [ "$nl" = 1 ] && [ "$wt" = 1 ] && [ "$st" = 0 ] && [ "$dirty" = 0 ] && [ "$remote_ok" = 1 ]; then ok=✅; else ok=❌; all_ok=1; fi
+  cur="$(git -C "$dir" symbolic-ref --short -q HEAD || echo "detached at $(git -C "$dir" rev-parse --short HEAD)")"
+  if [ "$cur" = main ] && [ "$nl" = 1 ] && [ "$wt" = 1 ] && [ "$st" = 0 ] && [ "$dirty" = 0 ] && [ "$remote_ok" = 1 ]; then ok=✅; else ok=❌; all_ok=1; fi
   printf "$fmt" "$name" "$nl" "$nr" "$np" "$wt" "$st" "$dirty" "$ab" "$ok"
 
   # Per-repo detail, printed after the matrix
   d=""
+  [ "$cur" != main ] && d+="  checkout: $cur (not main)"$'\n'
   extra_l="$(git -C "$dir" for-each-ref --format='%(refname:short)' refs/heads | grep -vx main)"
   extra_r="$(git -C "$dir" for-each-ref --format='%(refname:short)' refs/remotes | grep -v -E '^(origin|origin/HEAD|origin/main)$')"
   if [ -n "$extra_l$extra_r" ]; then
@@ -83,4 +85,4 @@ fi
 [ "$has_gh" = 0 ] && echo "(PRs n/a: gh CLI missing or not authenticated)"
 printf '%s' "$details" | clean
 echo
-[ "$all_ok" -eq 0 ] && echo "main-only, clean and level with origin ✅" || echo "❌ = extra branches, PRs, worktrees, stashes, dirty files, main drift, failed fetch or no remote (details above)"
+[ "$all_ok" -eq 0 ] && echo "main-only, clean and level with origin ✅" || echo "❌ = not on main, extra branches, PRs, worktrees, stashes, dirty files, main drift, failed fetch or no remote (details above)"
