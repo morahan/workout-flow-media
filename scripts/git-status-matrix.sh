@@ -4,6 +4,8 @@
 set -uo pipefail
 
 [ "$#" -eq 0 ] && set -- .
+# Strip control chars (keep tab/newline) so PR titles or branch names can't inject terminal escapes
+clean() { LC_ALL=C tr -d '\000-\010\013-\037\177'; }
 has_gh=0; command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1 && has_gh=1
 
 fmt='%-24s │ %6s %6s │ %6s │ %6s │ %6s │ %5s │ %-9s │ %s\n'
@@ -32,7 +34,7 @@ for dir in "$@"; do
     slug="$(git -C "$dir" remote get-url origin | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##')"
     if prs="$(gh pr list -R "$slug" --state open --limit 200 \
         --json number,headRefName,title,isDraft \
-        --jq '.[] | "#\(.number) \(.headRefName)\(if .isDraft then " [draft]" else "" end) — \(.title)"' 2>/dev/null)"; then
+        --jq '.[] | "#\(.number) \(.headRefName)\(if .isDraft then " [draft]" else "" end) — \(.title)"' 2>/dev/null | clean)"; then
       np="$(printf '%s' "$prs" | grep -c . | tr -d ' ')"; tp=$((tp + np))
     else
       prs=""; np="err"
@@ -76,6 +78,6 @@ if [ "$#" -gt 1 ]; then
   printf "$fmt" 'TOTAL' "$tl" "$tr" "$tp" "$tw" "$ts" "$td" '' ''
 fi
 [ "$has_gh" = 0 ] && echo "(PRs n/a: gh CLI missing or not authenticated)"
-printf '%s' "$details"
+printf '%s' "$details" | clean
 echo
 [ "$all_ok" -eq 0 ] && echo "main-only, clean and level with origin ✅" || echo "❌ = extra branches, PRs, worktrees, stashes, dirty files or main drift (details above)"
