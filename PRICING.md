@@ -49,6 +49,17 @@ Owner-confirmed **2026-10-29**. Standard **USD** catalog for agent guidance and 
 - Use a weekly savings comparison only when that tier's weekly plan is actually purchasable on the relevant rail. Do not mix it with a seasonal-sale anchor. Discounts need separate current approval and provider evidence; historical campaign notes do not authorize an offer.
 - Native storefronts may use localized currencies/prices. Show provider-returned localized amounts and recompute comparisons in the same currency; never attach the USD percentage to different localized prices without checking the math.
 
+## Seasonal sales (routing, added 2026-11-24)
+
+This section says where a sale lives. It does not approve a discount. The regular catalog above stays the reference price for every sale.
+
+- **One calendar sets every sale.** `functions/src/lib/holidaySaleCalendar.ts` in the main app repository (`WorkoutFlow-v2`) holds each campaign's dates and sale prices. The web app, subscribe.workoutflow.app and workoutflow.app read them from `GET https://us-central1-workoutflow-e448b.cloudfunctions.net/getActiveHolidaySale`. No other repository stores a sale price, percentage or date. Do not add one.
+- **Sales cover annual plans, first year only.** Monthly, weekly and Lifetime prices are never discounted. The types in the calendar and in each client enforce the annual-only rule, so a monthly or weekly sale is a feature change, not a number edit.
+- **The calendar does not create store offers.** The App Store intro offers, Google Play offers and Superwall holiday paywalls are created per campaign. Without them the native app shows a sale banner and then regular prices.
+- **Before you change a sale or call one live,** read `docs/subscriptions/HOLIDAY-SALE.md` in `WorkoutFlow-v2`. Section 10 is the launch gate. Section 11 lists every file, store, dashboard and repository to update together.
+- **In this repository,** change only how a sale is shown. subscribe.workoutflow.app reads the endpoint in `src/services/activeHolidaySale.ts`. workoutflow.app reads the endpoint in `src/hooks/use-active-holiday-sale.ts` and keeps campaign wording in `src/content/holidaySaleCopy.ts`. The main app reads the endpoint in `src/services/holidaySale/activeHolidaySale.ts`.
+- **Say only what checkout charges.** A banner, email or post may name a percentage only when every plan it points to shows that percentage or more. Use "up to N%" when the plans differ.
+
 ## Superwall screen presentation (owner direction, 2026-10-29)
 
 - Show **at most three price figures on one screen**. Default to a label-only two-duration toggle, **Weekly/Annual or Weekly/Monthly**. A Weekly/Monthly/Annual toggle is allowed when necessary, but only the selected plan’s pricing details appear; the toggle updates one selected-plan panel instead of displaying a grid of prices.
